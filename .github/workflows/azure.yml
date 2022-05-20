@@ -1,0 +1,42 @@
+# This workflow will build and push an application to a Azure Container Registry and Azure Web App for Containers when you push your code
+name: Build and deploy an app to Azure
+
+on:
+  workflow_dispatch:
+  
+permissions:
+  contents: read
+  id-token: write
+  
+env:
+  AZURE_CONTAINER_REGISTRY: "summerfest"
+  AZURE_WEB_APP_NAME: "summerfest22"
+  CONTAINER_NAME: "summerfest"
+  RESOURCE_GROUP: "SummerFest"
+
+jobs:
+  buildandDeployImage:   
+    name: Build and Deploy Container to ACR & AppService
+    runs-on: ubuntu-latest
+    
+    steps:
+    # Checks out the repository this file is in
+    - uses: actions/checkout@v3
+    
+    # Logs in with your Azure credentials
+    - name: Azure login
+      uses: azure/login@v1.4.3
+      with:
+        client-id: ########## AZURE-CLIENT-ID ###########
+        tenant-id: ########## AZURE-ACTIVE-DIREDTORY-TENANT-ID ###########
+        subscription-id: ########## AZURE-SUBSCRIPTION-ID ###########
+      
+    # Builds and pushes an image up to your Azure Container Registry
+    - name: Build and push image to ACR
+      run: |
+        az acr build --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --registry ${{ env.AZURE_CONTAINER_REGISTRY }} -g ${{ env.RESOURCE_GROUP }} .
+  
+    # Builds and pushes an image up to your Azure Container Registry
+    - name: Deploy image to AppService
+      run: |
+        az webapp config container set --name ${{ env.AZURE_WEB_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --docker-custom-image-name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }} --docker-registry-server-url https://${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
